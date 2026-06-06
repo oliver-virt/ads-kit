@@ -1,44 +1,10 @@
 {
-  "name": "tiktok-ads-kit",
-  "version": "0.1.0",
-  "description": "Typed, quirk-aware TikTok Marketing API client \u2014 campaign management, reporting, pixels, Smart+ fallbacks.",
-  "license": "MIT",
-  "author": "Or Virt <orvirt@gmail.com>",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/oliver-virt/tiktok-ads-kit.git"
-  },
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "name": "ads-kit-monorepo",
+  "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "prepublishOnly": "npm run build && npm test"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0",
-    "vitest": "^4.1.0"
-  },
-  "keywords": [
-    "tiktok",
-    "ads",
-    "marketing-api",
-    "tiktok-business",
-    "campaign",
-    "typescript"
-  ]
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  }
 }
