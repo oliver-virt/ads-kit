@@ -218,12 +218,27 @@ export function createTikTokAds(config) {
         async updateAdGroupBudget(adgroupId, budget, 
         /** Pass the ad group's existing mode to avoid switching it. */
         budgetMode = "BUDGET_MODE_DAY") {
-            await post("/adgroup/budget/update/", {
-                advertiser_id: advertiserId,
-                adgroup_ids: [adgroupId],
-                budget,
-                budget_mode: budgetMode,
-            });
+            // The endpoint takes a list of {adgroup_id, budget} objects — scalars
+            // fail with "budget: Not a valid list", numbers with "Invalid input type".
+            try {
+                await post("/adgroup/budget/update/", {
+                    advertiser_id: advertiserId,
+                    budget_mode: budgetMode,
+                    budget: [{ adgroup_id: adgroupId, budget }],
+                });
+            }
+            catch (e) {
+                // Smart+ ad groups reject the standard endpoint; theirs takes a flat budget.
+                if (e instanceof Error && e.message.includes("Smart Plus")) {
+                    await post("/smart_plus/adgroup/update/", {
+                        advertiser_id: advertiserId,
+                        adgroup_id: adgroupId,
+                        budget,
+                    });
+                    return;
+                }
+                throw e;
+            }
         },
         /**
          * Update age targeting. Falls back to the Smart+ endpoint automatically —

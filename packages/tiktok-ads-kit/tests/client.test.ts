@@ -102,6 +102,21 @@ describe("Smart+ fallbacks", () => {
   });
 });
 
+describe("budget", () => {
+  it("sends object-list shape, falls back to smart_plus flat budget", async () => {
+    const { c, f } = client([
+      { code: 40002, message: "This API does not support Upgraded Smart Plus ads.", data: {} },
+      ok({}),
+    ]);
+    await c.updateAdGroupBudget("ag-1", 125, "BUDGET_MODE_DYNAMIC_DAILY_BUDGET");
+    const first = JSON.parse(f.mock.calls[0][1].body);
+    expect(first.budget).toEqual([{ adgroup_id: "ag-1", budget: 125 }]);
+    const second = JSON.parse(f.mock.calls[1][1].body);
+    expect(String(f.mock.calls[1][0])).toContain("/smart_plus/adgroup/update/");
+    expect(second.budget).toBe(125);
+  });
+});
+
 describe("creation", () => {
   it("creates ad groups paused by default with explicit locations", async () => {
     const { c, f } = client([ok({ adgroup_id: "ag-9" })]);
