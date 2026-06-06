@@ -143,7 +143,7 @@ export function createTikTokAds(config) {
                 report_type: "BASIC",
                 data_level: opts.dataLevel,
                 dimensions: opts.dimensions,
-                metrics: [...METRICS],
+                metrics: opts.metrics ?? [...METRICS],
                 start_date: opts.startDate,
                 end_date: opts.endDate,
                 // Reports use a list-of-filters format, unlike entity endpoints.

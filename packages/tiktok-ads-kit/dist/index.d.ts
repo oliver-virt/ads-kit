@@ -104,8 +104,8 @@ export declare const METRICS: readonly ["spend", "impressions", "clicks", "ctr",
 export type Metric = (typeof METRICS)[number];
 export interface ReportRow {
     dimensions: Record<string, string>;
-    /** TikTok returns metric values as strings. */
-    metrics: Record<Metric, string>;
+    /** TikTok returns metric values as strings. Keys follow the requested metric set. */
+    metrics: Record<Metric, string> & Record<string, string>;
 }
 export type DataLevel = "AUCTION_ADVERTISER" | "AUCTION_CAMPAIGN" | "AUCTION_ADGROUP" | "AUCTION_AD";
 export declare const AGE_GROUPS: readonly ["AGE_13_17", "AGE_18_24", "AGE_25_34", "AGE_35_44", "AGE_45_54", "AGE_55_100"];
@@ -131,6 +131,8 @@ export declare function createTikTokAds(config: TikTokAdsConfig): {
         startDate: string;
         endDate: string;
         campaignIds?: string[];
+        /** Override the default metric set (e.g. ["reach", "frequency"]). */
+        metrics?: string[];
     }): Promise<ReportRow[]>;
     /** Audience breakdowns: age, gender, placement, province_id, ... */
     getAudienceReport(dimensions: string[], startDate: string, endDate: string): Promise<ReportRow[]>;

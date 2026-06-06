@@ -144,8 +144,8 @@ export type Metric = (typeof METRICS)[number];
 
 export interface ReportRow {
   dimensions: Record<string, string>;
-  /** TikTok returns metric values as strings. */
-  metrics: Record<Metric, string>;
+  /** TikTok returns metric values as strings. Keys follow the requested metric set. */
+  metrics: Record<Metric, string> & Record<string, string>;
 }
 
 export type DataLevel =
@@ -311,13 +311,15 @@ export function createTikTokAds(config: TikTokAdsConfig) {
       startDate: string;
       endDate: string;
       campaignIds?: string[];
+      /** Override the default metric set (e.g. ["reach", "frequency"]). */
+      metrics?: string[];
     }): Promise<ReportRow[]> {
       const data = await get<{ list: ReportRow[] }>("/report/integrated/get/", {
         advertiser_id: advertiserId,
         report_type: "BASIC",
         data_level: opts.dataLevel,
         dimensions: opts.dimensions,
-        metrics: [...METRICS],
+        metrics: opts.metrics ?? [...METRICS],
         start_date: opts.startDate,
         end_date: opts.endDate,
         // Reports use a list-of-filters format, unlike entity endpoints.
