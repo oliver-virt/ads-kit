@@ -521,7 +521,8 @@ export function createTikTokAds(config: TikTokAdsConfig) {
         schedule_type: "SCHEDULE_FROM_NOW",
         schedule_start_time: opts.scheduleStartTime,
         optimization_goal: opts.optimizationGoal,
-        billing_event: "OCPM",
+        // CLICK optimization only accepts CPC billing; conversion goals use OCPM.
+        billing_event: opts.optimizationGoal === "CLICK" ? "CPC" : "OCPM",
         bid_type: "BID_TYPE_NO_BID",
         pacing: "PACING_MODE_SMOOTH",
         operation_status: opts.operationStatus ?? "DISABLE",

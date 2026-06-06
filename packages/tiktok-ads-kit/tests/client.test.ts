@@ -116,6 +116,7 @@ describe("creation", () => {
     const body = JSON.parse(f.mock.calls[0][1].body);
     expect(body.operation_status).toBe("DISABLE");
     expect(body.location_ids).toEqual(["294640"]);
+    expect(body.billing_event).toBe("CPC"); // CLICK goal requires CPC billing
   });
 
   it("spark ads reference the organic post", async () => {
