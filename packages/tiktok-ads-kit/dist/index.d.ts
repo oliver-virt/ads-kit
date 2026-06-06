@@ -184,6 +184,8 @@ export declare function createTikTokAds(config: TikTokAdsConfig): {
         adText?: string;
         landingPageUrl: string;
         callToAction?: string;
+        /** SINGLE_VIDEO (default) or CAROUSEL_ADS for photo-mode posts. */
+        adFormat?: "SINGLE_VIDEO" | "CAROUSEL_ADS";
     }): Promise<{
         ad_ids?: string[];
     }>;

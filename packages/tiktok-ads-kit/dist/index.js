@@ -315,7 +315,7 @@ export function createTikTokAds(config) {
                         ad_name: opts.adName,
                         identity_type: opts.identityType ?? "TT_USER",
                         identity_id: opts.identityId,
-                        ad_format: "SINGLE_VIDEO",
+                        ad_format: opts.adFormat ?? "SINGLE_VIDEO",
                         tiktok_item_id: opts.tiktokItemId,
                         ad_text: opts.adText,
                         landing_page_url: opts.landingPageUrl,

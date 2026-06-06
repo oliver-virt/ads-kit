@@ -544,6 +544,8 @@ export function createTikTokAds(config: TikTokAdsConfig) {
       adText?: string;
       landingPageUrl: string;
       callToAction?: string;
+      /** SINGLE_VIDEO (default) or CAROUSEL_ADS for photo-mode posts. */
+      adFormat?: "SINGLE_VIDEO" | "CAROUSEL_ADS";
     }): Promise<{ ad_ids?: string[] }> {
       return post("/ad/create/", {
         advertiser_id: advertiserId,
@@ -553,7 +555,7 @@ export function createTikTokAds(config: TikTokAdsConfig) {
             ad_name: opts.adName,
             identity_type: opts.identityType ?? "TT_USER",
             identity_id: opts.identityId,
-            ad_format: "SINGLE_VIDEO",
+            ad_format: opts.adFormat ?? "SINGLE_VIDEO",
             tiktok_item_id: opts.tiktokItemId,
             ad_text: opts.adText,
             landing_page_url: opts.landingPageUrl,
