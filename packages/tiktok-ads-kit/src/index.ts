@@ -92,6 +92,62 @@ export interface PostInfo {
   post_url: string;
 }
 
+/** Identity behind a creative. `AUTH_CODE` = a creator-authorized Spark post. */
+export type IdentityType =
+  | "TT_USER"
+  | "AUTH_CODE"
+  | "BC_AUTH_TT"
+  | "CUSTOMIZED_USER";
+
+/**
+ * A creator Spark post resolved from an authorization code. Carries the exact
+ * `identity_id` / `tiktok_item_id` to feed `createSparkAd` — the auth code
+ * itself is never used at ad-create time.
+ */
+export interface AuthCodePost {
+  authCode: string;
+  itemId: string;
+  itemType: string;
+  identityId: string;
+  identityType: IdentityType;
+  creatorName?: string;
+  text?: string;
+  coverUrl?: string;
+  status?: string;
+  authStatus?: string;
+  authStart?: string;
+  authEnd?: string;
+  /** True when the post is a stitch/duet/mention needing the source's auth code. */
+  needsSourceAuth: boolean;
+  stitchOriginalItemId?: string;
+  duetOriginalItemId?: string;
+  mentionedItemIds?: string[];
+}
+
+interface AuthCodeInfoResponse {
+  auth_info?: {
+    ad_auth_status?: string;
+    auth_start_time?: string;
+    auth_end_time?: string;
+  };
+  item_info?: {
+    item_id: string;
+    item_type?: string;
+    text?: string;
+    status?: string;
+    stitch_original_item_id?: string;
+    duet_original_item_id?: string;
+    mentioned_item_ids?: string[];
+  };
+  user_info?: {
+    identity_id?: string;
+    identity_type?: string;
+    tiktok_name?: string;
+  };
+  video_info?: { poster_url?: string };
+  carousel_info?: { image_info?: { image_url?: string }[] };
+}
+
 interface VideoDetail {
   item_id: string;
   item_type?: string;
@@ -299,6 +355,103 @@ export function createTikTokAds(config: TikTokAdsConfig) {
         cover_url: cover,
         post_url: `https://www.tiktok.com/@_/video/${itemId}`,
       };
+    },
+
+    /**
+     * Resolve a creator Spark authorization code into the post it grants —
+     * `item_id`, the creative `identity_id`/`identity_type`, the auth window,
+     * and whether a source (stitch/duet) auth code is also needed. Read-only;
+     * call before `authorizeCreatorPost`.
+     */
+    async getAuthCodeInfo(authCode: string): Promise<AuthCodePost> {
+      const data = await get<AuthCodeInfoResponse>("/tt_video/info/", {
+        advertiser_id: advertiserId,
+        auth_code: authCode,
+      });
+      const item = data.item_info;
+      if (!item?.item_id) {
+        throw new Error("tiktok-ads-kit: auth code resolved no item_info");
+      }
+      const present = (v?: string) => !!v && v !== "0";
+      const cover =
+        data.video_info?.poster_url ??
+        data.carousel_info?.image_info?.[0]?.image_url;
+      return {
+        authCode,
+        itemId: item.item_id,
+        itemType: item.item_type ?? "VIDEO",
+        identityId: data.user_info?.identity_id ?? "",
+        identityType: (data.user_info?.identity_type as IdentityType) ?? "AUTH_CODE",
+        creatorName: data.user_info?.tiktok_name,
+        text: item.text,
+        coverUrl: cover,
+        status: item.status,
+        authStatus: data.auth_info?.ad_auth_status,
+        authStart: data.auth_info?.auth_start_time,
+        authEnd: data.auth_info?.auth_end_time,
+        needsSourceAuth:
+          present(item.stitch_original_item_id) ||
+          present(item.duet_original_item_id) ||
+          (item.mentioned_item_ids?.length ?? 0) > 0,
+        stitchOriginalItemId: present(item.stitch_original_item_id)
+          ? item.stitch_original_item_id
+          : undefined,
+        duetOriginalItemId: present(item.duet_original_item_id)
+          ? item.duet_original_item_id
+          : undefined,
+        mentionedItemIds: item.mentioned_item_ids,
+      };
+    },
+
+    /**
+     * Apply a creator authorization code — binds the Spark post to this ad
+     * account so it can be promoted. Pass `originalPostAuthCode` for
+     * stitch/duet posts. Authorization is not implicit; this call is required
+     * before `createSparkAd`.
+     */
+    async authorizeCreatorPost(
+      authCode: string,
+      originalPostAuthCode?: string,
+    ): Promise<void> {
+      await post("/tt_video/authorize/", {
+        advertiser_id: advertiserId,
+        auth_code: authCode,
+        original_post_auth_code: originalPostAuthCode,
+      });
+    },
+
+    /** List the Spark posts already authorized to this ad account (paged). */
+    async listAuthorizedPosts(opts?: {
+      itemTypes?: string[];
+      keyword?: string;
+      page?: number;
+      pageSize?: number;
+    }): Promise<AuthCodePost[]> {
+      const data = await get<{ list?: AuthCodeInfoResponse[] }>(
+        "/tt_video/list/",
+        {
+          advertiser_id: advertiserId,
+          item_types: opts?.itemTypes,
+          keyword: opts?.keyword,
+          page: opts?.page ?? 1,
+          page_size: opts?.pageSize ?? 100,
+        },
+      );
+      return (data.list ?? [])
+        .filter((r) => r.item_info?.item_id)
+        .map((r) => ({
+          authCode: r.item_info?.["auth_code" as never] ?? "",
+          itemId: r.item_info!.item_id,
+          itemType: r.item_info?.item_type ?? "VIDEO",
+          identityId: r.user_info?.identity_id ?? "",
+          identityType:
+            (r.user_info?.identity_type as IdentityType) ?? "AUTH_CODE",
+          creatorName: r.user_info?.tiktok_name,
+          text: r.item_info?.text,
+          authStart: r.auth_info?.auth_start_time,
+          authEnd: r.auth_info?.auth_end_time,
+          needsSourceAuth: false,
+        }));
     },
 
     /**
@@ -522,6 +675,11 @@ export function createTikTokAds(config: TikTokAdsConfig) {
       optimizationEvent?: string;
       ageGroups?: AgeGroup[];
       scheduleStartTime: string; // "YYYY-MM-DD HH:MM:SS"
+      /**
+       * Explicit placements (e.g. `["PLACEMENT_TIKTOK"]`) to pin delivery and
+       * exclude Pangle / Global App Bundle junk. Omit for automatic placement.
+       */
+      placements?: string[];
       /** Created paused by default — flip to "ENABLE" to go live immediately. */
       operationStatus?: OperationStatus;
     }): Promise<{ adgroup_id: string }> {
@@ -530,7 +688,10 @@ export function createTikTokAds(config: TikTokAdsConfig) {
         campaign_id: opts.campaignId,
         adgroup_name: opts.name,
         promotion_type: "WEBSITE",
-        placement_type: "PLACEMENT_TYPE_AUTOMATIC",
+        placement_type: opts.placements
+          ? "PLACEMENT_TYPE_NORMAL"
+          : "PLACEMENT_TYPE_AUTOMATIC",
+        placements: opts.placements,
         location_ids: opts.locationIds,
         budget_mode: "BUDGET_MODE_DAY",
         budget: opts.dailyBudget,
@@ -553,7 +714,7 @@ export function createTikTokAds(config: TikTokAdsConfig) {
       adgroupId: string;
       adName: string;
       identityId: string;
-      identityType?: string;
+      identityType?: IdentityType;
       tiktokItemId: string;
       adText?: string;
       landingPageUrl: string;

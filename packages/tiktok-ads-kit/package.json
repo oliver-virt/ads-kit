@@ -1,7 +1,7 @@
 {
   "name": "tiktok-ads-kit",
-  "version": "0.1.0",
-  "description": "Typed, quirk-aware TikTok Marketing API client \u2014 campaign management, reporting, pixels, Smart+ fallbacks.",
+  "version": "0.2.0",
+  "description": "Typed, quirk-aware TikTok Marketing API client — campaign management, reporting, pixels, Smart+ fallbacks.",
   "license": "MIT",
   "author": "Or Virt <orvirt@gmail.com>",
   "repository": {

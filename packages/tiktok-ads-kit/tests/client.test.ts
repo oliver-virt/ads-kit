@@ -134,6 +134,37 @@ describe("creation", () => {
     expect(body.billing_event).toBe("CPC"); // CLICK goal requires CPC billing
   });
 
+  it("pins TikTok-only placement when placements are given", async () => {
+    const { c, f } = client([ok({ adgroup_id: "ag-tt" })]);
+    await c.createAdGroup({
+      campaignId: "c-1",
+      name: "TT only",
+      dailyBudget: 150,
+      optimizationGoal: "CONVERT",
+      locationIds: ["294640"],
+      scheduleStartTime: "2026-01-01 00:00:00",
+      placements: ["PLACEMENT_TIKTOK"],
+    });
+    const body = JSON.parse(f.mock.calls[0][1].body);
+    expect(body.placement_type).toBe("PLACEMENT_TYPE_NORMAL");
+    expect(body.placements).toEqual(["PLACEMENT_TIKTOK"]);
+  });
+
+  it("defaults to automatic placement when none given", async () => {
+    const { c, f } = client([ok({ adgroup_id: "ag-auto" })]);
+    await c.createAdGroup({
+      campaignId: "c-1",
+      name: "auto",
+      dailyBudget: 25,
+      optimizationGoal: "CLICK",
+      locationIds: ["294640"],
+      scheduleStartTime: "2026-01-01 00:00:00",
+    });
+    const body = JSON.parse(f.mock.calls[0][1].body);
+    expect(body.placement_type).toBe("PLACEMENT_TYPE_AUTOMATIC");
+    expect(body.placements).toBeUndefined();
+  });
+
   it("spark ads reference the organic post", async () => {
     const { c, f } = client([ok({ ad_ids: ["a-1"] })]);
     await c.createSparkAd({
@@ -166,5 +197,101 @@ describe("posts + chunking", () => {
     const { c, f } = client([ok({ list: [] }), ok({ list: [] })]);
     await c.getVideoInfo(Array.from({ length: 61 }, (_, i) => `v${i}`));
     expect(f).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("spark auth codes", () => {
+  const infoBody = (over: Record<string, unknown> = {}) =>
+    ok({
+      auth_info: {
+        auth_start_time: "2026-06-23 16:16:38",
+        auth_end_time: "2026-12-20 16:16:38",
+      },
+      item_info: {
+        item_id: "7644166615050833160",
+        item_type: "VIDEO",
+        text: "promo",
+        status: "HESITATE_RECOMMEND",
+        stitch_original_item_id: "0",
+        duet_original_item_id: "0",
+        ...over,
+      },
+      user_info: {
+        identity_id: "7083168959743460358",
+        identity_type: "AUTH_CODE",
+        tiktok_name: "מאיה סקול",
+      },
+      video_info: { poster_url: "https://cdn/cover.jpg" },
+    });
+
+  it("resolves an auth code to the creative triple", async () => {
+    const { c, f } = client([infoBody()]);
+    const post = await c.getAuthCodeInfo("THE-CODE");
+    const [url] = f.mock.calls[0];
+    expect(String(url)).toContain("/tt_video/info/");
+    expect(String(url)).toContain("auth_code=THE-CODE");
+    expect(post).toMatchObject({
+      itemId: "7644166615050833160",
+      identityId: "7083168959743460358",
+      identityType: "AUTH_CODE",
+      itemType: "VIDEO",
+      creatorName: "מאיה סקול",
+      coverUrl: "https://cdn/cover.jpg",
+      needsSourceAuth: false,
+    });
+  });
+
+  it("flags stitch/duet posts as needing source auth", async () => {
+    const { c } = client([infoBody({ stitch_original_item_id: "999" })]);
+    const post = await c.getAuthCodeInfo("CODE");
+    expect(post.needsSourceAuth).toBe(true);
+    expect(post.stitchOriginalItemId).toBe("999");
+  });
+
+  it("throws when an auth code resolves nothing", async () => {
+    const { c } = client([ok({ user_info: {} })]);
+    await expect(c.getAuthCodeInfo("BAD")).rejects.toThrow("resolved no item_info");
+  });
+
+  it("authorizes a creator post, passing the source code through", async () => {
+    const { c, f } = client([ok({})]);
+    await c.authorizeCreatorPost("CODE", "SRC-CODE");
+    const [url, init] = f.mock.calls[0];
+    expect(String(url)).toContain("/tt_video/authorize/");
+    const body = JSON.parse(init.body);
+    expect(body).toMatchObject({
+      advertiser_id: "adv-1",
+      auth_code: "CODE",
+      original_post_auth_code: "SRC-CODE",
+    });
+  });
+
+  it("lists authorized posts", async () => {
+    const { c, f } = client([
+      ok({
+        list: [
+          {
+            item_info: { item_id: "i1", item_type: "VIDEO" },
+            user_info: { identity_id: "id1", identity_type: "AUTH_CODE" },
+          },
+        ],
+      }),
+    ]);
+    const posts = await c.listAuthorizedPosts({ keyword: "x" });
+    expect(String(f.mock.calls[0][0])).toContain("/tt_video/list/");
+    expect(posts[0]).toMatchObject({ itemId: "i1", identityId: "id1" });
+  });
+
+  it("creates an AUTH_CODE spark ad from a resolved post", async () => {
+    const { c, f } = client([ok({ ad_ids: ["a-2"] })]);
+    await c.createSparkAd({
+      adgroupId: "ag-1",
+      adName: "Creator spark",
+      identityId: "7083168959743460358",
+      identityType: "AUTH_CODE",
+      tiktokItemId: "7644166615050833160",
+      landingPageUrl: "https://hitkabalti.co.il/",
+    });
+    expect(f.mock.calls[0][1].body).toContain('"identity_type":"AUTH_CODE"');
   });
 });
