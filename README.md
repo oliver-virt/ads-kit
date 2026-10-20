@@ -1,6 +1,6 @@
 # ads-kit
 
-Typed, quirk-aware ad-platform API clients for TypeScript. One package per
+Typed, quirk-aware ad-platform and social API clients for TypeScript. One package per
 platform — campaign structures, error semantics, and release cadences differ
 too much for a unified abstraction, so each client is honest about its
 platform instead.
@@ -8,6 +8,7 @@ platform instead.
 | Package | Platform | Status |
 |---|---|---|
 | [`tiktok-ads-kit`](./packages/tiktok-ads-kit) | TikTok Marketing API | published |
+| [`tiktok-content-kit`](./packages/tiktok-content-kit) | TikTok Content Posting + Display API (drafts, stats), CLI and MCP server | new |
 | `meta-ads-kit` | Meta Marketing API | in progress |
 
 Shared conventions across packages: factory config (`createXAds({...})`),
