@@ -9,6 +9,7 @@ platform instead.
 |---|---|---|
 | [`tiktok-ads-kit`](./packages/tiktok-ads-kit) | TikTok Marketing API | published |
 | `meta-ads-kit` | Meta Marketing API | in progress |
+| [`youtube-content-kit`](./packages/youtube-content-kit) | YouTube Data API (drafts, stats) | new |
 
 Shared conventions across packages: factory config (`createXAds({...})`),
 errors thrown with the platform's real message, writes never cached,

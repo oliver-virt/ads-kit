@@ -1,0 +1,60 @@
+{
+  "name": "youtube-content-kit",
+  "version": "0.1.0",
+  "description": "Typed YouTube client, CLI and MCP server for a channel's own content: upload private drafts, read channel and video stats.",
+  "license": "MIT",
+  "author": "Or Virt <orvirt@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oliver-virt/ads-kit.git",
+    "directory": "packages/youtube-content-kit"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./store": {
+      "types": "./dist/store.d.ts",
+      "import": "./dist/store.js",
+      "default": "./dist/store.js"
+    }
+  },
+  "bin": {
+    "youtube-content": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "keywords": [
+    "youtube",
+    "youtube-data-api",
+    "shorts",
+    "mcp",
+    "typescript"
+  ]
+}
